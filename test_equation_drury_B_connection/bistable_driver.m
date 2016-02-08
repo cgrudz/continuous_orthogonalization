@@ -16,8 +16,8 @@ xi_steps = 2000;
 xi_range = linspace(L,R,xi_steps);
 
 %define the spectral contour
-lam_steps = 500;
-preimage = .1*exp(1i*linspace(0,2*pi,lam_steps+1));
+lam_steps = 1000;
+preimage = .5*exp(1i*linspace(0,2*pi,lam_steps+1));
 preimage = preimage(1:end-1);
 delta_s = (2*pi)/lam_steps;
 

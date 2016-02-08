@@ -1,5 +1,7 @@
-function [out, projects] = analytic_basis_bistab(projection,x,preimage,A,posneg,eps)
-% [out, projects] = analytic_basis(projection,x,preimage,s,p,A,posneg,eps,Q,p_old_in)
+function [out, projects] = analytic_basis_HS(projection,x,preimage, ...
+                                             A,posneg,eps,par)
+% [out, projects] = analytic_basis(projection,x,preimage,s,p,A, ...
+%                                   posneg,eps,Q,p_old_in)
 %
 % Returns an analytic basis at specified infinity using the method of Kato.
 %
@@ -11,10 +13,10 @@ function [out, projects] = analytic_basis_bistab(projection,x,preimage,A,posneg,
 % projection function. 
 
 iterations = size(preimage,2);
-[p_old, Q1] = projection(A(x,preimage(1)),posneg,eps);
+[p_old, Q1] = projection(A(x,preimage(1),par.o,par.r,par.p),posneg,eps);
 [n,k]=size(Q1);
 
-[U,T] = schur(A(x,preimage(1)),'complex');
+[U,T] = schur(A(x,preimage(1),par.o,par.r,par.p),'complex');
 E = ordeig(T);
 k = length(find(posneg*real(E)>eps));
 US = ordschur(U,T,posneg*real(E)>eps);
@@ -25,12 +27,11 @@ projects = zeros(size(p_old,1),size(p_old,2),iterations);
 % if imag(preimage(1)) == 0
 %     out(:,:,1) = real(US(:,1:k));
 % else
-      out(:,:,1) = US(:,1:k);
+    out(:,:,1) = US(:,1:k);
 % end
 
 for j=2:iterations
-    j/iterations
-    [U,T] = schur(A(x,preimage(j)),'complex');
+    [U,T] = schur(A(x,preimage(j),par.o,par.r,par.p),'complex');
     E = ordeig(T);
     k = length(find(posneg*real(E)>eps));
     US = ordschur(U,T,posneg*real(E)>eps);

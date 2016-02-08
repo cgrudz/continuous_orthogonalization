@@ -1,12 +1,15 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% This is the test script for running the Drury continuous
-% orthogonalization method on the Hocking-Stewartson Pulse of the 
+% This is the test script for the projective unitary integration
+% method on the Hocking-Stewartson Pulse of the 
 % linear, complex Ginzburg-Landau equation.  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Opening lines
 clc; clear all; close all;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Define the problem parameters
+
+% experiment title, will concat the center of the contour to the name
+exp_name = 'PERK_test_';
 
 % parameters for the equation
 omega = 3;
@@ -21,13 +24,15 @@ par.p = psi;
 
 % endpoints
 L = -10.0;
-R = 10.0;
-xi_steps = 500;
+R = -9.0;
+xi_steps = 10000;
 xi_range = linspace(L,R,xi_steps);
+delta_xi = (R-L)/xi_steps;
 
 %define the spectral contour
-lam_steps = 2000;
-preimage = 0 + 1*exp(1i*linspace(0,2*pi,lam_steps+1));
+lam = 0;
+lam_steps = 20;
+preimage = lam + 1*exp(1i*linspace(0,2*pi,lam_steps+1));
 preimage = preimage(1:end-1);
 delta_s = (2*pi)/lam_steps;
 
@@ -51,41 +56,33 @@ proj = @projection_edit;
 [init,projects]= analytic_basis_HS(proj,L,preimage,deriv,pm,eps,par);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Integrate the frame by two methods for comparison
-%  we integrate via the Drury method and via standard ODE45
+%% Integrate the frame by PERK
 
 % define the storage matrix for the path of frames
 [state_dim,frame_dim,lam_steps] = size(init);
 frame = zeros(xi_steps,state_dim,frame_dim,lam_steps);
 
 for i = 1:lam_steps
-    i/lam_steps
-    [steps, path] = ode15s(@(t,y) drury_edit(t,y,...
-                                     preimage(i),deriv,state_dim, ...
-                                     frame_dim,par), xi_range,init(:,:,i));
-    
+    % define the initial condition for the lambda step
+    temp = init(:,:,i);
+    % save the matrix equation as a function of only x and lambda
+    A_x = @(x)hs_matc4(x,preimage(i),omega,rho,psi);
+
+    % define the stiefel derivative for the parameter value
+    dQdx = @(x,Q)stiefel_derivative(x,Q,A_x);
+    % integrate the initial frame and store
+    path = rk4(dQdx,L,delta_xi,xi_steps,temp(:));
     frame(:,:,:,i) =reshape(path,xi_steps,state_dim,frame_dim);   
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Calculate geometric phase of the un/stable manifold at plotting steps
-
-% Gram-Schmidt
-nrm = sqrt(sum(conj(frame).*frame,2));
-nrm = repmat(nrm,[1,state_dim,1,1]);
-Y = frame./nrm;
-Y_temp = sum(conj(Y(:,:,1,:)).*Y(:,:,2,:),2);
-Y_temp = repmat(Y_temp,[1,state_dim,1,1]);
-Y_temp = Y(:,:,2,:) - Y(:,:,1,:).*Y_temp;
-Y(:,:,2,:) = Y_temp;
-
-% Y = frame;
+%% Calculate geometric phase of the unstable manifold
 
 % Assuming a closed contour, reindex one step forward and one step backward
 % in order to approximate the lambda derivative via the difference equation
 % for each vector in the frame
-shift_f = cat(4,Y(:,:,:,2:end),Y(:,:,:,1));
-shift_b = cat(4,Y(:,:,:,end),Y(:,:,:,1:end-1));
+shift_f = cat(4,frame(:,:,:,2:end),frame(:,:,:,1));
+shift_b = cat(4,frame(:,:,:,end),frame(:,:,:,1:end-1));
 
 % The lambda derivatives are approximated via
 % \frac{X(\lambda(s_2),t) - X(\lambda(s_0),t)}{2\delta s}
@@ -93,17 +90,19 @@ Y_lam = (shift_f - shift_b)/(2*delta_s);
 
 % We create storage for the connection at each point of the contour and
 % each time step we wish to plot
-con = connection_multi_dim(Y,Y_lam);
-%con = raw_connection_form(Y,Y_lam);
+con = connection_multi_dim(frame,Y_lam);
 
-%%
-
+% compute the geometric phase and relative phase 
 geo_phase = imag(squeeze(sum(con*delta_s,2)/(2*pi)));
 rel_phase = geo_phase - geo_phase(1);
 
-figure(1)
-subplot(1,2,1)
-plot(xi_range,geo_phase)
-subplot(1,2,2)
-plot(xi_range,rel_phase)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% save data for post processing
+
+data = struct('GP',geo_phase,'RP',rel_phase,'par',par,'K',preimage, ...
+              'con',con, 'frame',frame,'plt_points',xi_range);
+
+filename = strcat(exp_name,num2str(lam));
+save(filename,'data')
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

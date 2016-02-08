@@ -74,6 +74,8 @@ geo_phase_M = imag(squeeze(geo_phase_M/(2*pi)));
 geo_phase_S = sum(connection_S,3)*delta_s;
 geo_phase_S = imag(squeeze(geo_phase_S/(2*pi)));
 
+%relative_phase 
+
 figure()
 subplot(1,2,1)
 plot(xi_range,geo_phase_M)
