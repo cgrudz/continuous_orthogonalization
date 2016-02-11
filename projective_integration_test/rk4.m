@@ -7,16 +7,16 @@ function yOut = rk4(fHandle,t0,h,numSteps,y0)
     y = y0;
 
     %% Allocating
-    yOut = zeros(numSteps+1,length(y0)); 
-    yOut(1,:) = y0;
+    yOut = zeros(numSteps,4,2); 
+    yOut(1,:,:) = reshape(y0,4,2);
     %% Time loop
-    for it = 1:numSteps
+    for it = 2:numSteps
         % RK step
         [t,y] = rk4Step(fHandle,t,y,h);
         % Euler projection step
         [t,y] = projectionStep4D(t,y);
         
-        yOut(it,:) = y';
+        yOut(it,:,:) = reshape(y,4,2);
     end
     
 end

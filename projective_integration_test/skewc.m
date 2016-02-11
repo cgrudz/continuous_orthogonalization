@@ -1,3 +1,4 @@
 function M = skewc(F)
-
-M = 0.5 * ( F - conj(F)' );
+    % compute the skew symmetric part of the matrix F
+    M = 0.5*( F - F' );
+end
